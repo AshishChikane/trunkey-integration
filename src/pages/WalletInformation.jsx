@@ -38,7 +38,7 @@ export default function WalletInformation() {
     }
 
     const turnkeySigner = new TurnkeySigner({
-      client: authIframeClient,
+      client: passkeyClient,
       organizationId: id,
       signWith: walletData.addresses[0],
     });

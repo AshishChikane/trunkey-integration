@@ -56,33 +56,21 @@ export default function OrganizationWallets() {
     getAllWalletDetails();
   }, []);
 
-  //   passkey feature
 
-  //   useEffect(() => {
-  //     const init = async () => {
-  //       console.log("passkey", passkeyClient);
-  //       let res = await loginWithPasskey();
-  //       let user = await turnkey.currentUserSession();
-  //       console.log("user", user);
-  //     };
-  //     if (passkeyClient) init();
-  //   }, [passkeyClient]);
-
-  const loginWithPasskey = async () => {
-    let res = await passkeyClient?.login({ organizationId: id });
-    console.log("res", res);
-  };
 
   const createWallet = async () => {
     try {
       // const user = await turnkey.currentUserSession()
-      await loginWithPasskey();
       const wallet = await passkeyClient.createWallet({
         walletName: walletName,
         accounts: DEFAULT_ETHEREUM_ACCOUNTS,
       });
+      // console.log("wallet", wallet)
+      localStorage.setItem(wallet.walletId, JSON.stringify(wallet));
+      getAllWalletDetails();
+      setIsOpen(false)
 
-      console.log("wallet", wallet);
+      // console.log("wallet", wallet);
     } catch (err) {
       console.log("err", err);
     }
@@ -184,6 +172,7 @@ export default function OrganizationWallets() {
     }
   };
 
+
   return (
     <div className="my-8 mx-12">
       <Box>
@@ -222,14 +211,14 @@ export default function OrganizationWallets() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <div className="mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Add Sub-Organization
+            Create Wallet
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          {/* <p className="text-sm text-gray-600 dark:text-gray-400">
             Create a new sub-organization for your wallet
-          </p>
+          </p> */}
         </div>
 
-        <form onSubmit={createWallet} className="space-y-4">
+        {/* <form onSubmit={createWallet} className="space-y-4"> */}
           <div>
             <Label htmlFor="walletName">Wallet Name</Label>
             <Input
@@ -242,9 +231,9 @@ export default function OrganizationWallets() {
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button label="Create" />
+            <Button label="Create" type="button" onClick={createWallet} />
           </div>
-        </form>
+        {/* </form> */}
       </Dialog>
 
       {/* Send OTP Dialog */}
