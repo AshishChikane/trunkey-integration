@@ -56,8 +56,6 @@ export default function OrganizationWallets() {
     getAllWalletDetails();
   }, []);
 
-
-
   const createWallet = async () => {
     try {
       // const user = await turnkey.currentUserSession()
@@ -65,10 +63,17 @@ export default function OrganizationWallets() {
         walletName: walletName,
         accounts: DEFAULT_ETHEREUM_ACCOUNTS,
       });
-      // console.log("wallet", wallet)
-      localStorage.setItem(wallet.walletId, JSON.stringify(wallet));
+      localStorage.setItem(
+        wallet.walletId,
+        JSON.stringify({
+          walletInfo: wallet,
+          walletType: "Passkey",
+          walletName: walletName,
+        })
+      );
+
       getAllWalletDetails();
-      setIsOpen(false)
+      setIsOpen(false);
 
       // console.log("wallet", wallet);
     } catch (err) {
@@ -148,10 +153,8 @@ export default function OrganizationWallets() {
       await authIframeClient.login();
       createwallerFromIframe();
       setOtpDialogOpen(false);
-      setWalletName("");
-      setEmail("");
+
       getAllWalletDetails();
-      setOtp("");
     } catch (error) {
       console.error("Error verifying OTP:", error);
     }
@@ -165,13 +168,23 @@ export default function OrganizationWallets() {
         accounts: DEFAULT_ETHEREUM_ACCOUNTS,
       });
 
-      localStorage.setItem(wallet.walletId, JSON.stringify(wallet));
+      localStorage.setItem(
+        wallet.walletId,
+        JSON.stringify({
+          walletInfo: wallet,
+          walletType: "Otp",
+          walletName: walletName,
+        })
+      );
+
       getAllWalletDetails();
+      setWalletName("");
+      setEmail("");
+      setOtp("");
     } catch (err) {
       console.log("err", err);
     }
   };
-
 
   return (
     <div className="my-8 mx-12">
@@ -213,26 +226,26 @@ export default function OrganizationWallets() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Create Wallet
           </h2>
-          {/* <p className="text-sm text-gray-600 dark:text-gray-400">
-            Create a new sub-organization for your wallet
-          </p> */}
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Create a new wallet
+          </p>
         </div>
 
         {/* <form onSubmit={createWallet} className="space-y-4"> */}
-          <div>
-            <Label htmlFor="walletName">Wallet Name</Label>
-            <Input
-              id="walletName"
-              value={walletName}
-              onChange={(e) => setWalletName(e.target.value)}
-              placeholder="Enter wallet name"
-              required
-            />
-          </div>
+        <div className="space-y-4">
+          <Label htmlFor="walletName">Wallet Name</Label>
+          <Input
+            id="walletName"
+            value={walletName}
+            onChange={(e) => setWalletName(e.target.value)}
+            placeholder="Enter wallet name"
+            required
+          />
+        </div>
 
-          <div className="flex justify-end space-x-2">
-            <Button label="Create" type="button" onClick={createWallet} />
-          </div>
+        <div className="flex justify-end space-x-2 my-4">
+          <Button label="Create" type="button" onClick={createWallet} />
+        </div>
         {/* </form> */}
       </Dialog>
 

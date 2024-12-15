@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import Box from "../components/ui/Box";
 import Button from "../components/ui/Button";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import Dialog from "../components/ui/Dailog";
 import { Input } from "../components/ui/Input";
 import { useTurnkey } from "@turnkey/sdk-react";
 import { TurnkeySigner } from "@turnkey/ethers";
 import { ethers } from "ethers";
+import { ArrowLeft } from "lucide-react";
 
 export default function WalletInformation() {
+  const navigate = useNavigate();
   const [walletData, setWalletData] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [recipientAddress, setRecipientAddress] = useState("");
@@ -38,9 +40,10 @@ export default function WalletInformation() {
     }
 
     const turnkeySigner = new TurnkeySigner({
-      client: passkeyClient,
+      client:
+        walletData?.walletType === "Passkey" ? passkeyClient : authIframeClient,
       organizationId: id,
-      signWith: walletData.addresses[0],
+      signWith: walletData.walletInfo.addresses[0],
     });
 
     const provider = new ethers.JsonRpcProvider(
@@ -50,7 +53,7 @@ export default function WalletInformation() {
 
     const transactionRequest = {
       to: recipientAddress,
-      value: ethers.parseEther("0.0001"),
+      value: amount,
       type: 2,
     };
     const transactionResult = await connectedSigner.sendTransaction(
@@ -59,30 +62,38 @@ export default function WalletInformation() {
 
     console.log(transactionResult);
 
-    console.log("Sending crypto...");
-    console.log("Recipient Address:", recipientAddress);
-    console.log("Amount:", amount);
-
-    // Close the dialog after handling send logic
     setIsDialogOpen(false);
   };
 
   return (
     <div className="my-8 mx-12">
       <Box>
-        <div className="flex flex-col sm:flex-row justify-between items-center w-full gap-4">
-          <div className="text-lg font-medium">
-            {walletData ? walletData?.walletId : "Loading..."}
-          </div>
-          <div className="text-lg font-medium">
-            {walletData ? walletData?.addresses[0] : "Loading Address"}
+        <div className="flex flex-col w-full gap-4">
+          {/* Title and Button in One Line */}
+          <div className="flex justify-between items-center w-full">
+            <button
+              onClick={() => navigate(`/dashboard/${id}`)}
+              className="flex items-center text-xl font-bold text-white transition-colors duration-300"
+            >
+              <ArrowLeft strokeWidth={2.5} className="h-5 w-5 mx-3" />
+              {walletData ? walletData?.walletName : "Loading..."}
+            </button>
+
+            <Button label="Send Crypto" onClick={() => setIsDialogOpen(true)} />
           </div>
 
-          <Button label="Send Crypto" onClick={() => setIsDialogOpen(true)} />
+          {/* Balance and Wallet Address */}
+          <div className="text-lg font-medium text-start">
+            <div>Balance: 1.25 ETH</div>
+            <div className="text-sm text-gray-400">
+              {walletData
+                ? walletData?.walletInfo?.addresses[0]
+                : "Loading Address"}
+            </div>
+          </div>
         </div>
       </Box>
 
-      {/* Dialog */}
       {isDialogOpen && (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <div className="mb-4">
