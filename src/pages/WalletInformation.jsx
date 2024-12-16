@@ -14,6 +14,8 @@ export default function WalletInformation() {
   const [walletData, setWalletData] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [recipientAddress, setRecipientAddress] = useState("");
+  const [balance, setBalance] = useState(null);
+  const [loadingBalance, setLoadingBalance] = useState(true);
   const [amount, setAmount] = useState("");
   const { id, walletId } = useParams();
   const { turnkey, passkeyClient, authIframeClient } = useTurnkey();
@@ -32,6 +34,34 @@ export default function WalletInformation() {
 
     getWalletData();
   }, [walletId]);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!walletData?.walletInfo?.addresses[0]) {
+        setBalance(null);
+        return;
+      }
+
+      setLoadingBalance(true);
+      const provider = new ethers.JsonRpcProvider(
+        "https://api.avax-test.network/ext/bc/C/rpc"
+      );
+
+      try {
+        const walletAddress = walletData.walletInfo.addresses[0];
+        const balanceInWei = await provider.getBalance(walletAddress);
+        const balanceInEth = ethers.formatEther(balanceInWei); // Converts wei to AVAX/ETH
+        setBalance(balanceInEth);
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+        setBalance(null);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, [walletData]);
 
   const handleSendCrypto = async () => {
     if (!recipientAddress || !amount) {
@@ -84,13 +114,21 @@ export default function WalletInformation() {
 
           {/* Balance and Wallet Address */}
           <div className="text-lg font-medium text-start">
-            <div>Balance: 1.25 ETH</div>
+            <div>
+              Balance:{" "}
+              {loadingBalance
+                ? "Loading..."
+                : balance !== null
+                  ? `${balance} AVAX`
+                  : "Error fetching balance"}
+            </div>
             <div className="text-sm text-gray-400">
               {walletData
                 ? walletData?.walletInfo?.addresses[0]
                 : "Loading Address"}
             </div>
           </div>
+
         </div>
       </Box>
 
