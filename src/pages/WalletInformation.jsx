@@ -8,6 +8,9 @@ import { useTurnkey } from "@turnkey/sdk-react";
 import { TurnkeySigner } from "@turnkey/ethers";
 import { ethers } from "ethers";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "react-toastify";
+import Loader from "../components/ui/Loader";
+const AVAX_URL = import.meta.env.VITE_AVAX_RPC_URL;
 
 export default function WalletInformation() {
   const navigate = useNavigate();
@@ -19,6 +22,7 @@ export default function WalletInformation() {
   const [amount, setAmount] = useState("");
   const { id, walletId } = useParams();
   const { turnkey, passkeyClient, authIframeClient } = useTurnkey();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const getWalletData = () => {
@@ -35,71 +39,81 @@ export default function WalletInformation() {
     getWalletData();
   }, [walletId]);
 
-  useEffect(() => {
-    const fetchBalance = async () => {
+  const fetchBalance = async () => {
+    try {
       if (!walletData?.walletInfo?.addresses[0]) {
+        console.warn("No wallet address found.");
         setBalance(null);
         return;
       }
 
       setLoadingBalance(true);
-      const provider = new ethers.JsonRpcProvider(
-        "https://api.avax-test.network/ext/bc/C/rpc"
-      );
+      const provider = new ethers.JsonRpcProvider(AVAX_URL);
+      const walletAddress = walletData.walletInfo.addresses[0];
+      const balanceInWei = await provider.getBalance(walletAddress);
+      const balanceInEth = ethers.formatEther(balanceInWei);
+      setBalance(balanceInEth);
+      return balanceInEth;
+    } catch (error) {
+      setBalance(null);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
-      try {
-        const walletAddress = walletData.walletInfo.addresses[0];
-        const balanceInWei = await provider.getBalance(walletAddress);
-        const balanceInEth = ethers.formatEther(balanceInWei); // Converts wei to AVAX/ETH
-        setBalance(balanceInEth);
-      } catch (error) {
-        console.error("Error fetching balance:", error);
-        setBalance(null);
-      } finally {
-        setLoadingBalance(false);
-      }
-    };
-
+  useEffect(() => {
     fetchBalance();
-  }, [walletData]);
+  }, [walletData, balance]);
 
   const handleSendCrypto = async () => {
     if (!recipientAddress || !amount) {
       alert("Please fill in all fields.");
       return;
     }
+    setLoading(true);
+    try {
+      const turnkeySigner = new TurnkeySigner({
+        client:
+          walletData?.walletType === "Passkey"
+            ? passkeyClient
+            : authIframeClient,
+        organizationId: id,
+        signWith: walletData?.walletInfo?.addresses[0],
+      });
 
-    const turnkeySigner = new TurnkeySigner({
-      client:
-        walletData?.walletType === "Passkey" ? passkeyClient : authIframeClient,
-      organizationId: id,
-      signWith: walletData.walletInfo.addresses[0],
-    });
+      console.log(turnkeySigner);
 
-    const provider = new ethers.JsonRpcProvider(
-      "https://api.avax-test.network/ext/bc/C/rpc"
-    );
-    const connectedSigner = turnkeySigner.connect(provider);
+      const provider = new ethers.JsonRpcProvider(AVAX_URL);
+      const connectedSigner = turnkeySigner.connect(provider);
 
-    const transactionRequest = {
-      to: recipientAddress,
-      value: amount,
-      type: 2,
-    };
-    const transactionResult = await connectedSigner.sendTransaction(
-      transactionRequest
-    );
-
-    console.log(transactionResult);
-
-    setIsDialogOpen(false);
+      const valueInWei = ethers.parseUnits(amount.toString(), "ether");
+      const transactionRequest = {
+        to: recipientAddress,
+        value: valueInWei,
+        type: 2,
+      };
+      const transactionResult = await connectedSigner.sendTransaction(
+        transactionRequest
+      );
+      setBalance(null);
+      let response = await fetchBalance();
+      
+      toast.success("Transaction completed successfully!");
+      setIsDialogOpen(false);
+      setRecipientAddress("");
+      setAmount("");
+      setLoading(false);
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      toast.error("Transaction failed. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
     <div className="my-8 mx-12">
       <Box>
         <div className="flex flex-col w-full gap-4">
-          {/* Title and Button in One Line */}
           <div className="flex justify-between items-center w-full">
             <button
               onClick={() => navigate(`/dashboard/${id}`)}
@@ -112,15 +126,14 @@ export default function WalletInformation() {
             <Button label="Send Crypto" onClick={() => setIsDialogOpen(true)} />
           </div>
 
-          {/* Balance and Wallet Address */}
           <div className="text-lg font-medium text-start">
             <div>
               Balance:{" "}
               {loadingBalance
                 ? "Loading..."
                 : balance !== null
-                  ? `${balance} AVAX`
-                  : "Error fetching balance"}
+                ? `${balance} AVAX`
+                : "Error fetching balance"}
             </div>
             <div className="text-sm text-gray-400">
               {walletData
@@ -128,7 +141,6 @@ export default function WalletInformation() {
                 : "Loading Address"}
             </div>
           </div>
-
         </div>
       </Box>
 
@@ -139,7 +151,7 @@ export default function WalletInformation() {
               Send Crypto
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Note: Only Ether is available for now.
+              Note: Only Avax is available for now.
             </p>
           </div>
 
@@ -173,7 +185,7 @@ export default function WalletInformation() {
                 className="block text-sm font-medium mb-2"
                 htmlFor="amount"
               >
-                Amount (ETH)
+                Amount (Avax)
               </label>
               <Input
                 type="number"
@@ -193,6 +205,7 @@ export default function WalletInformation() {
           </form>
         </Dialog>
       )}
+      {loading && <Loader />}
     </div>
   );
 }

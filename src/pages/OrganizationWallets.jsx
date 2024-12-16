@@ -14,6 +14,10 @@ import { Label } from "../components/ui/Label";
 import { Input } from "../components/ui/Input";
 import Dialog from "../components/ui/Dailog";
 import axios from "axios";
+const PUBLIC_KEY = import.meta.env.VITE_API_PUBLIC_KEY;
+const PRIVATE_KEY = import.meta.env.VITE_API_PRIVATE_KEY;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const API_BASE_KEY = import.meta.env.VITE_API_BASE_KEY;
 
 export default function OrganizationWallets() {
   const navigate = useNavigate();
@@ -30,16 +34,11 @@ export default function OrganizationWallets() {
   const { turnkey, passkeyClient, authIframeClient } = useTurnkey();
 
   const stamper = new ApiKeyStamper({
-    apiPublicKey:
-      "02969adf495407ebb2c60bd9b6745b0ab2a873734a8281c695076339dc0d3cec80",
-    apiPrivateKey:
-      "15aeb2b4f6947d5883dbbf7cc532b4787f7da83560792cf3fd1c9379ca03ca09",
+    apiPublicKey: PUBLIC_KEY,
+    apiPrivateKey: PRIVATE_KEY,
   });
 
-  const httpClient = new TurnkeyClient(
-    { baseUrl: "https://api.turnkey.com" },
-    stamper
-  );
+  const httpClient = new TurnkeyClient({ baseUrl: API_BASE_KEY }, stamper);
 
   const getAllWalletDetails = async () => {
     try {
@@ -74,8 +73,6 @@ export default function OrganizationWallets() {
 
       getAllWalletDetails();
       setIsOpen(false);
-
-      // console.log("wallet", wallet);
     } catch (err) {
       console.log("err", err);
     }
@@ -140,20 +137,17 @@ export default function OrganizationWallets() {
 
   const verifyOtpAndCreateWallet = async () => {
     try {
-      const resp = await axios.post(
-        "https://f2a9-103-200-100-102.ngrok-free.app/verify-otp",
-        {
-          otpId: otpId,
-          otpCode: otp,
-          organizationId: id,
-          targetPublicKey: authIframeClient?.iframePublicKey,
-        }
-      );
+      const resp = await axios.post(`${BACKEND_URL}/v2/otp/verify-otp`, {
+        otpId: otpId,
+        otpCode: otp,
+        organizationId: id,
+        targetPublicKey: authIframeClient?.iframePublicKey,
+      });
       await authIframeClient.injectCredentialBundle(resp.data.credentialBundle);
       await authIframeClient.login();
       createwallerFromIframe();
       setOtpDialogOpen(false);
-
+      
       getAllWalletDetails();
     } catch (error) {
       console.error("Error verifying OTP:", error);
@@ -231,7 +225,6 @@ export default function OrganizationWallets() {
           </p>
         </div>
 
-        {/* <form onSubmit={createWallet} className="space-y-4"> */}
         <div className="space-y-4">
           <Label htmlFor="walletName">Wallet Name</Label>
           <Input
@@ -246,7 +239,6 @@ export default function OrganizationWallets() {
         <div className="flex justify-end space-x-2 my-4">
           <Button label="Create" type="button" onClick={createWallet} />
         </div>
-        {/* </form> */}
       </Dialog>
 
       {/* Send OTP Dialog */}
@@ -263,7 +255,7 @@ export default function OrganizationWallets() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            sendOtp(); // Call sendOtp function on form submit
+            sendOtp();
           }}
           className="space-y-4"
         >

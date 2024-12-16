@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Box from "../components/ui/Box";
 import Button from "../components/ui/Button";
 import { ApiKeyStamper } from "@turnkey/api-key-stamper";
@@ -13,6 +14,11 @@ import { Label } from "../components/ui/Label";
 import Table from "../components/ui/Table";
 import Loader from "../components/ui/Loader";
 import { useNavigate } from "react-router";
+const PUBLIC_KEY = import.meta.env.VITE_API_PUBLIC_KEY;
+const PRIVATE_KEY = import.meta.env.VITE_API_PRIVATE_KEY;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const API_BASE_KEY = import.meta.env.VITE_API_BASE_KEY;
+const DEFAULT_ORGANIZATION = import.meta.env.VITE_DEFAULT_ORGANIZATION_ID;
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -22,23 +28,18 @@ export default function Dashboard() {
   const [subOrganizations, setSubOrganizations] = useState([]);
   const [username, setUsername] = useState("");
   const [walletName, setWalletName] = useState("");
-
+  const [loading, setLoading] = useState(false);
   const stamper = new ApiKeyStamper({
-    apiPublicKey:
-      "02969adf495407ebb2c60bd9b6745b0ab2a873734a8281c695076339dc0d3cec80",
-    apiPrivateKey:
-      "15aeb2b4f6947d5883dbbf7cc532b4787f7da83560792cf3fd1c9379ca03ca09",
+    apiPublicKey: PUBLIC_KEY,
+    apiPrivateKey: PRIVATE_KEY,
   });
 
-  const httpClient = new TurnkeyClient(
-    { baseUrl: "https://api.turnkey.com" },
-    stamper
-  );
+  const httpClient = new TurnkeyClient({ baseUrl: API_BASE_KEY }, stamper);
 
   const getChildOrganizations = async () => {
     try {
       let sub_orgs = await httpClient.getSubOrgIds({
-        organizationId: "ceddd4dd-272e-4e38-bd79-40401694ccef",
+        organizationId: DEFAULT_ORGANIZATION,
       });
       let arr = [];
       if (!sub_orgs.organizationIds.length) return arr;
@@ -63,55 +64,60 @@ export default function Dashboard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    try {
+      const turnkey = new Turnkey({
+        apiBaseUrl: API_BASE_KEY,
+        defaultOrganizationId: DEFAULT_ORGANIZATION,
+      });
 
-    const turnkey = new Turnkey({
-      apiBaseUrl: "https://api.turnkey.com",
-      defaultOrganizationId: "ceddd4dd-272e-4e38-bd79-40401694ccef",
-    });
+      const passkeyClient = turnkey.passkeyClient();
 
-    const passkeyClient = turnkey.passkeyClient();
-
-    const credential = await passkeyClient.createUserPasskey({
-      publicKey: {
-        user: {
-          name: "Neel Non cust --- ",
-          displayName: "Neel Kanani --- ",
+      const credential = await passkeyClient.createUserPasskey({
+        publicKey: {
+          user: {
+            name: username,
+            displayName: username,
+          },
         },
-      },
-    });
-
-    const subOrganizationConfig = {
-      subOrganizationName: subOrgName,
-      rootUsers: [
-        {
-          userName: username,
-          userEmail: email,
-          apiKeys: [],
-          authenticators: [
-            {
-              authenticatorName: "Neel Non cust ----",
-              challenge: credential.encodedChallenge,
-              attestation: credential.attestation,
-            },
-          ],
-          oauthProviders: [],
+      });
+      const subOrganizationConfig = {
+        subOrganizationName: subOrgName,
+        rootUsers: [
+          {
+            userName: username,
+            userEmail: email,
+            apiKeys: [],
+            authenticators: [
+              {
+                authenticatorName: username,
+                challenge: credential.encodedChallenge,
+                attestation: credential.attestation,
+              },
+            ],
+            oauthProviders: [],
+          },
+        ],
+        rootQuorumThreshold: 1,
+        wallet: {
+          walletName: walletName,
+          accounts: DEFAULT_ETHEREUM_ACCOUNTS,
         },
-      ],
-      rootQuorumThreshold: 1,
-      wallet: {
-        walletName: walletName,
-        accounts: DEFAULT_ETHEREUM_ACCOUNTS,
-      },
-    };
+      };
 
-    await axios.post(
-      "https://f2a9-103-200-100-102.ngrok-free.app/create-sub-organization",
-      {
+      await axios.post(`${BACKEND_URL}/v2/organization/create-sub-organization`, {
         organizationBody: subOrganizationConfig,
-      }
-    );
-    await getChildOrganizations();
-    setIsOpen(false);
+      });
+
+      await getChildOrganizations();
+      setIsOpen(false);
+      toast.success("Sub-organization created successfully!");
+    } catch (error) {
+      console.error("Error creating sub-organization:", error);
+      toast.error("Failed to create sub-organization. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRowClick = (id) => {
@@ -235,10 +241,11 @@ export default function Dashboard() {
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button label="Create" type="submit" />
+            <Button label={loading ? "Creating..." : "Create"} type="submit" />
           </div>
         </form>
       </Dialog>
+      {loading && <Loader />}
     </div>
   );
 }

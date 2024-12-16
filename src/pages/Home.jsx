@@ -15,10 +15,10 @@ export default function Home() {
       </div>
 
       <h2 className="mb-4 text-4xl font-bold text-red-100 sm:text-5xl">
-        Simplify Integrate Trunkey
+        Simplify Integrate TurnKey
       </h2>
       <p className="mb-12 text-red-300">
-        Seamlessly connecting your app with Trunkey for enhanced functionality
+        Seamlessly connecting your app with TurnKey for enhanced functionality
         and integration
       </p>
 
